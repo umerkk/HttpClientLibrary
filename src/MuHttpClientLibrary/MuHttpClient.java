@@ -14,6 +14,8 @@ public class MuHttpClient {
 	URL url;
 	int port;
 	PrintWriter writer;
+	MuMethod method;
+	String postData;
 
 	public MuHttpClient(String URI, int port, MuMethod method) throws Exception {
 		// Constructor
@@ -21,15 +23,17 @@ public class MuHttpClient {
 
 			url = new URL(URI);
 			header = new MuMessageHeader();
+			this.method = method;
+			this.postData = "";
 
 			String[] urlDump = url.getAuthority().split(":");
 
-			if (!(url.getProtocol().equals("http") || url.getProtocol().equals("https"))) {
+			if (!(url.getProtocol().equalsIgnoreCase("http") || url.getProtocol().equalsIgnoreCase("https"))) {
 				throw new Exception("Protocol not supported. Must be HTTP or HTTPS.");
 			}
 
 			if (urlDump.length > 1) {
-				port = Integer.parseInt(urlDump[1]);
+				this.port = Integer.parseInt(urlDump[1]);
 			} else {
 				this.port = port;
 			}
@@ -43,31 +47,71 @@ public class MuHttpClient {
 		this(URI, defaultPort, MuMethod.GET);
 	}
 
-	public void sendRequest() throws Exception {
+	public MuHttpClient(String URI, MuMethod method) throws Exception {
+		this(URI, defaultPort, method);
+	}
+	public MuHttpClient(String URI, MuMethod method, String data) throws Exception {
+		this(URI, defaultPort, method);
+		this.postData = data;
+	}
 
-		sock = new Socket(url.getHost(), port);
+	public MuHttpResponse sendRequest() throws Exception {
+
+		sock = new Socket(url.getHost(), this.port);
 		writer = new PrintWriter(sock.getOutputStream());
 
-		writer.println("GET /status/418 HTTP/1.1");
-
+		writer.println(method + " " + url.getFile() + " HTTP/1.0");
 		header.addHeader("Host", url.getHost());
-		
-		//Append all headers to the request.
-		writer.print(header.toString());
 
+		if(this.method == MuMethod.POST) {
+			header.addHeader("Content-Length", String.valueOf(this.postData.length()));
+		}
+		// header.addHeader("Content-Type", "application/json");
+		// header.addHeader("Content-Length", "10");
+
+		// writer.print("{\"Assignment\": 1}'");
+
+		// Append all headers to the request.
+		writer.print(header.toString());
+		if(this.method == MuMethod.POST) {
+			writer.print(postData);
+		}
 		writer.flush();
 
 		BufferedReader bufRead = new BufferedReader(new InputStreamReader(sock.getInputStream()));
 		String outStr;
 
-		//Output
+		// Output
+		MuHttpResponse response = new MuHttpResponse();
+		boolean isBodyStart = false;
+		int i = 0;
 		while ((outStr = bufRead.readLine()) != null) {
-			System.out.println(outStr);
+			if (i == 0) {
+				String[] dumpRsp = outStr.split(" ");
+				response.httpVersion = dumpRsp[0];
+				response.responseCode = Integer.parseInt(dumpRsp[1]);
+				for (int k = 2; k < dumpRsp.length; k++)
+					response.responseMessage += dumpRsp[k] + " ";
+
+			} else if (isBodyStart) {
+				response.result += outStr + "\r\n";
+			} else {
+				if (!outStr.equalsIgnoreCase("")) {
+					if (!isBodyStart) {
+						response.getHeaders().parse(outStr);
+					}
+				} else {
+					isBodyStart = true;
+				}
+			}
+			i++;
 		}
 
 		bufRead.close();
 		writer.close();
 		sock.close();
+
+		return response;
 	}
 
 }

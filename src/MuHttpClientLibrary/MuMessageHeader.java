@@ -37,5 +37,13 @@ public class MuMessageHeader {
 		val+=CRLF;
 		return val;
 	}
+	
+	public void parse(String string) throws Exception {
+		String[] dump = string.split(":");
+		if(dump.length == 2) {
+			this.addHeader(dump[0], dump[1]);
+			
+		}
+	}
 
 }
