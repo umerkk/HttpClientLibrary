@@ -17,12 +17,12 @@ public class MuHttpClient {
 	MuMethod method;
 	String postData;
 
-	public MuHttpClient(String URI, int port, MuMethod method) throws Exception {
+	public MuHttpClient(String URI, int port, MuMethod method, MuMessageHeader header) throws Exception {
 		// Constructor
 		try {
 
-			url = new URL(URI);
-			header = new MuMessageHeader();
+			this.url = new URL(URI);
+			this.header = header;
 			this.method = method;
 			this.postData = "";
 
@@ -44,14 +44,21 @@ public class MuHttpClient {
 	}
 
 	public MuHttpClient(String URI) throws Exception {
-		this(URI, defaultPort, MuMethod.GET);
+		this(URI, defaultPort, MuMethod.GET, new MuMessageHeader());
 	}
 
 	public MuHttpClient(String URI, MuMethod method) throws Exception {
-		this(URI, defaultPort, method);
+		this(URI, defaultPort, method, new MuMessageHeader());
+	}
+	public MuHttpClient(String URI, MuMethod method, MuMessageHeader header) throws Exception {
+		this(URI, defaultPort, method, header);
 	}
 	public MuHttpClient(String URI, MuMethod method, String data) throws Exception {
-		this(URI, defaultPort, method);
+		this(URI, defaultPort, method, new MuMessageHeader());
+		this.postData = data;
+	}
+	public MuHttpClient(String URI, MuMethod method, String data, MuMessageHeader header) throws Exception {
+		this(URI, defaultPort, method, header);
 		this.postData = data;
 	}
 
