@@ -1,7 +1,19 @@
+/******************************************
+ * ______________COMP6461__________________
+ * _Data Communication & Computer Networks_
+ * 
+ *			  Assignment # 1
+ * 
+ *____________Submitted By_________________
+ *		  Muhammad Umer (40015021)
+ * 	  Reza Morshed Behbahani (40039400)
+ * 
+ ******************************************/
 package HttpCLI;
 
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 
 import MuHttpClientLibrary.*;
@@ -19,7 +31,10 @@ public class httpc {
 		boolean isHeadersProvided = false;
 		boolean isDataProvided = false;
 		boolean isInputError = false;
+		boolean isOutputToFile = false;
 		String errorMessage = "";
+		String outputFileName = "output.txt";
+		final String CRLF = "\r\n";
 
 		try {
 			url = args[args.length - 1];
@@ -83,6 +98,13 @@ public class httpc {
 					k++; // Skip the next one.
 				}
 			}
+
+			if (args[k].equalsIgnoreCase("-o")) {
+				isOutputToFile = true;
+				if (k + 1 < args.length) {
+					outputFileName = args[k + 1];
+				}
+			}
 		}
 
 		if (httpMethod == null) {
@@ -98,13 +120,26 @@ public class httpc {
 				} else {
 					client = new MuHttpClient(url, httpMethod, header);
 				}
-				
-				MuHttpResponse response = client.sendRequest();
-				if(isVerbose) {
-					System.out.println(response.getHttpVersion() + " " + response.getResponseCode() + " "+response.getResponseMessage());
-					System.out.println(response.getHeaders().toString());
+
+				MuHttpResponse response = client.sendRequest(6);
+				if (isOutputToFile) {
+					String output = "";
+					if (isVerbose) {
+						output += response.getHttpVersion() + " " + response.getResponseCode() + " "
+								+ response.getResponseMessage() + CRLF;
+						output += response.getHeaders().toString() + CRLF;
+					}
+					output += response.getResult();
+					writeFile(outputFileName, output);
+				} else {
+					if (isVerbose) {
+						System.out.println(response.getHttpVersion() + " " + response.getResponseCode() + " "
+								+ response.getResponseMessage());
+						System.out.println(response.getHeaders().toString());
+					}
+					System.out.println(response.getResult());
 				}
-				System.out.println(response.getResult());
+
 			} catch (Exception e) {
 				System.out.println(
 						"The following errors occured while executing your request:\r\n \r\n " + e.getMessage());
@@ -136,6 +171,27 @@ public class httpc {
 			}
 		}
 		return content;
+	}
+
+	private static void writeFile(String filename, String content) {
+		File file = new File(filename);
+		FileWriter writer = null;
+		try {
+			writer = new FileWriter(file);
+			writer.write(content);
+			writer.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			if (writer != null) {
+				try {
+					writer.close();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
 	}
 
 }

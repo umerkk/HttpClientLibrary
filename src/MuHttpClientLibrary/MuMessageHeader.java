@@ -1,3 +1,15 @@
+/******************************************
+ * ______________COMP6461__________________
+ * _Data Communication & Computer Networks_
+ * 
+ *			  Assignment # 1
+ * 
+ *____________Submitted By_________________
+ *		  Muhammad Umer (40015021)
+ * 	  Reza Morshed Behbahani (40039400)
+ * 
+ ******************************************/
+
 package MuHttpClientLibrary;
 
 import java.util.HashMap;
@@ -43,6 +55,14 @@ public class MuMessageHeader {
 		if(dump.length == 2) {
 			this.addHeader(dump[0], dump[1]);
 			
+		}
+	}
+	
+	public String getHeaderValue(String key) {
+		if(map.containsKey(key)) {
+			return map.get(key);
+		} else {
+			return null;
 		}
 	}
 

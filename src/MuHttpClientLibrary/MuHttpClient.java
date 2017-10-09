@@ -1,3 +1,15 @@
+/******************************************
+ * ______________COMP6461__________________
+ * _Data Communication & Computer Networks_
+ * 
+ *			  Assignment # 1
+ * 
+ *____________Submitted By_________________
+ *		  Muhammad Umer (40015021)
+ * 	  Reza Morshed Behbahani (40039400)
+ * 
+ ******************************************/
+
 package MuHttpClientLibrary;
 
 import java.io.BufferedReader;
@@ -50,75 +62,94 @@ public class MuHttpClient {
 	public MuHttpClient(String URI, MuMethod method) throws Exception {
 		this(URI, defaultPort, method, new MuMessageHeader());
 	}
+
 	public MuHttpClient(String URI, MuMethod method, MuMessageHeader header) throws Exception {
 		this(URI, defaultPort, method, header);
 	}
+
 	public MuHttpClient(String URI, MuMethod method, String data) throws Exception {
 		this(URI, defaultPort, method, new MuMessageHeader());
 		this.postData = data;
 	}
+
 	public MuHttpClient(String URI, MuMethod method, String data, MuMessageHeader header) throws Exception {
 		this(URI, defaultPort, method, header);
 		this.postData = data;
 	}
 
-	public MuHttpResponse sendRequest() throws Exception {
+	public MuHttpResponse sendRequest(int reqNumber) throws Exception {
 
-		sock = new Socket(url.getHost(), this.port);
-		writer = new PrintWriter(sock.getOutputStream());
+		if (reqNumber < 1) {
+			return null;
+		} else {
+			sock = new Socket(url.getHost(), this.port);
+			writer = new PrintWriter(sock.getOutputStream());
 
-		writer.println(method + " " + url.getFile() + " HTTP/1.0");
-		header.addHeader("Host", url.getHost());
+			writer.println(method + " " + url.getFile() + " HTTP/1.0");
+			header.addHeader("Host", url.getHost());
 
-		if(this.method == MuMethod.POST) {
-			header.addHeader("Content-Length", String.valueOf(this.postData.length()));
-		}
-		// header.addHeader("Content-Type", "application/json");
-		// header.addHeader("Content-Length", "10");
+			if (this.method == MuMethod.POST) {
+				header.addHeader("Content-Length", String.valueOf(this.postData.length()));
+			}
+			// header.addHeader("Content-Type", "application/json");
+			// header.addHeader("Content-Length", "10");
 
-		// writer.print("{\"Assignment\": 1}'");
+			// writer.print("{\"Assignment\": 1}'");
 
-		// Append all headers to the request.
-		writer.print(header.toString());
-		if(this.method == MuMethod.POST) {
-			writer.print(postData);
-		}
-		writer.flush();
+			// Append all headers to the request.
+			writer.print(header.toString());
+			if (this.method == MuMethod.POST) {
+				writer.print(postData);
+			}
+			writer.flush();
 
-		BufferedReader bufRead = new BufferedReader(new InputStreamReader(sock.getInputStream()));
-		String outStr;
+			BufferedReader bufRead = new BufferedReader(new InputStreamReader(sock.getInputStream()));
+			String outStr;
 
-		// Output
-		MuHttpResponse response = new MuHttpResponse();
-		boolean isBodyStart = false;
-		int i = 0;
-		while ((outStr = bufRead.readLine()) != null) {
-			if (i == 0) {
-				String[] dumpRsp = outStr.split(" ");
-				response.httpVersion = dumpRsp[0];
-				response.responseCode = Integer.parseInt(dumpRsp[1]);
-				for (int k = 2; k < dumpRsp.length; k++)
-					response.responseMessage += dumpRsp[k] + " ";
+			// Output
+			MuHttpResponse response = new MuHttpResponse();
+			boolean isBodyStart = false;
+			int i = 0;
+			while ((outStr = bufRead.readLine()) != null) {
+				if (i == 0) {
+					String[] dumpRsp = outStr.split(" ");
+					response.httpVersion = dumpRsp[0];
+					response.responseCode = Integer.parseInt(dumpRsp[1]);
+					for (int k = 2; k < dumpRsp.length; k++)
+						response.responseMessage += dumpRsp[k] + " ";
 
-			} else if (isBodyStart) {
-				response.result += outStr + "\r\n";
-			} else {
-				if (!outStr.equalsIgnoreCase("")) {
-					if (!isBodyStart) {
-						response.getHeaders().parse(outStr);
-					}
+				} else if (isBodyStart) {
+					response.result += outStr + "\r\n";
 				} else {
-					isBodyStart = true;
+					if (!outStr.equalsIgnoreCase("")) {
+						if (!isBodyStart) {
+							response.getHeaders().parse(outStr);
+						}
+					} else {
+						isBodyStart = true;
+					}
+				}
+				i++;
+			}
+
+			if (response.responseCode >= 300 && response.responseCode <= 399) {
+				// Do the redirection
+				if (response.getHeaders().getHeaderValue("Location") != null && this.method == MuMethod.GET) {
+					if (reqNumber - 1 > 0) {
+						String newUrl = this.url.getProtocol() + "://" + this.url.getHost()
+								+ response.getHeaders().getHeaderValue("Location").trim();
+						MuHttpClient cl = new MuHttpClient(newUrl, this.port, this.method, new MuMessageHeader());
+						response = cl.sendRequest(reqNumber - 1);
+					}
 				}
 			}
-			i++;
+
+			bufRead.close();
+			writer.close();
+			sock.close();
+
+			return response;
 		}
-
-		bufRead.close();
-		writer.close();
-		sock.close();
-
-		return response;
 	}
 
 }

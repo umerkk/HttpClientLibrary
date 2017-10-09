@@ -1,3 +1,15 @@
+/******************************************
+ * ______________COMP6461__________________
+ * _Data Communication & Computer Networks_
+ * 
+ *			  Assignment # 1
+ * 
+ *____________Submitted By_________________
+ *		  Muhammad Umer (40015021)
+ * 	  Reza Morshed Behbahani (40039400)
+ * 
+ ******************************************/
+
 package Debugging;
 
 import MuHttpClientLibrary.*;
@@ -9,7 +21,7 @@ public class Debug {
 		try {
 			MuHttpClient client = new MuHttpClient("http://httpbin.org/post",MuMethod.POST,"test=sdfdsf&LastName=Umer");
 			client.header.addHeader("Content-Type", "application/x-www-form-urlencoded");
-			MuHttpResponse resp = client.sendRequest();
+			MuHttpResponse resp = client.sendRequest(5);
 			System.out.println(resp.getHttpVersion() + " " + resp.getResponseCode() + " "+resp.getResponseMessage());
 			System.out.println(resp.getHeaders().toString());
 			System.out.println(resp.getResult());

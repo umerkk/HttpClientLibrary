@@ -1,0 +1,21 @@
+HTTP/1.0 200 OK 
+X-Processed-Time:  0.000638008117676
+Server:  meinheld/0.6.1
+Access-Control-Allow-Origin:  *
+Access-Control-Allow-Credentials:  true
+Connection:  keep-alive
+Content-Length:  159
+Content-Type:  application/json
+X-Powered-By:  Flask
+Via:  1.1 vegur
+
+
+{
+  "args": {}, 
+  "headers": {
+    "Connection": "close", 
+    "Host": "httpbin.org"
+  }, 
+  "origin": "132.205.229.65", 
+  "url": "http://httpbin.org/get"
+}
