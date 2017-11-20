@@ -15,12 +15,15 @@ package MuHttpClientLibrary;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.Socket;
 import java.net.URL;
 
 public class MuHttpClient {
 
-	Socket sock;
+	DatagramSocket sock;
 	public MuMessageHeader header;
 	private static int defaultPort = 80;
 	URL url;
@@ -82,10 +85,13 @@ public class MuHttpClient {
 		if (reqNumber < 1) {
 			return null;
 		} else {
-			sock = new Socket(url.getHost(), this.port);
-			writer = new PrintWriter(sock.getOutputStream());
+			InetAddress address = InetAddress.getByName(url.getHost());
+			
+			sock = new DatagramSocket();
+			String data = "";
+			//writer = new PrintWriter(sock.getOutputStream());
 
-			writer.println(method + " " + url.getFile() + " HTTP/1.0");
+			data += method + " " + url.getFile() + " HTTP/1.0\r\n";
 			header.addHeader("Host", url.getHost());
 
 			if (this.method == MuMethod.POST) {
@@ -97,33 +103,42 @@ public class MuHttpClient {
 			// writer.print("{\"Assignment\": 1}'");
 
 			// Append all headers to the request.
-			writer.print(header.toString());
+			data += header.toString();
 			if (this.method == MuMethod.POST) {
-				writer.print(postData);
+				data += postData;
 			}
-			writer.flush();
-
-			BufferedReader bufRead = new BufferedReader(new InputStreamReader(sock.getInputStream()));
+			//writer.flush();
+			byte[] buf = data.getBytes();
+	        DatagramPacket packet = new DatagramPacket(buf, buf.length, address, this.port);
+	        sock.send(packet);
+	        
+	        buf = new byte[2048];
+	        packet = new DatagramPacket(buf, buf.length);
+	        sock.receive(packet);
+	        String received = new String(packet.getData(), 0, packet.getLength());
+	        String[] parts = received.split("\r\n");
+			//BufferedReader bufRead = new BufferedReader(new InputStreamReader(sock.getInputStream()));
 			String outStr;
 
 			// Output
 			MuHttpResponse response = new MuHttpResponse();
 			boolean isBodyStart = false;
 			int i = 0;
-			while ((outStr = bufRead.readLine()) != null) {
-				if (i == 0) {
-					String[] dumpRsp = outStr.split(" ");
+			//while ((outStr = bufRead.readLine()) != null) {
+			for(int k=0;k<parts.length;k++) {
+				if (k == 0) {
+					String[] dumpRsp = parts[k].split(" ");
 					response.httpVersion = dumpRsp[0];
 					response.responseCode = Integer.parseInt(dumpRsp[1]);
-					for (int k = 2; k < dumpRsp.length; k++)
-						response.responseMessage += dumpRsp[k] + " ";
+					for (int j = 2; j < dumpRsp.length; j++)
+						response.responseMessage += dumpRsp[j] + " ";
 
 				} else if (isBodyStart) {
-					response.result += outStr + "\r\n";
+					response.result += parts[k] + "\r\n";
 				} else {
-					if (!outStr.equalsIgnoreCase("")) {
+					if (!parts[k].equalsIgnoreCase("")) {
 						if (!isBodyStart) {
-							response.getHeaders().parse(outStr);
+							response.getHeaders().parse(parts[k]);
 						}
 					} else {
 						isBodyStart = true;
@@ -144,8 +159,8 @@ public class MuHttpClient {
 				}
 			}
 
-			bufRead.close();
-			writer.close();
+			//bufRead.close();
+			//writer.close();
 			sock.close();
 
 			return response;
