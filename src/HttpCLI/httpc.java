@@ -15,6 +15,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 
 import MuHttpClientLibrary.*;
 
@@ -121,7 +122,7 @@ public class httpc {
 					client = new MuHttpClient(url, httpMethod, header);
 				}
 				
-				MuHttpResponse response = null;
+				ArrayList<MuHttpResponse> response = null;
 				if(client.doHandShake()) {
 					response = client.sendRequest(6);
 				} else {
@@ -129,24 +130,26 @@ public class httpc {
 					return;
 				}
 				
-			
-				if (isOutputToFile) {
-					String output = "";
-					if (isVerbose) {
-						output += response.getHttpVersion() + " " + response.getResponseCode() + " "
-								+ response.getResponseMessage() + CRLF;
-						output += response.getHeaders().toString() + CRLF;
+				for(int k=0;k<response.size();k++) {
+					if (isOutputToFile) {
+						String output = "";
+						if (isVerbose) {
+							output += response.get(k).getHttpVersion() + " " + response.get(k).getResponseCode() + " "
+									+ response.get(k).getResponseMessage() + CRLF;
+							output += response.get(k).getHeaders().toString() + CRLF;
+						}
+						output += response.get(k).getResult();
+						writeFile(outputFileName, output);
+					} else {
+						if (isVerbose) {
+							System.out.println(response.get(k).getHttpVersion() + " " + response.get(k).getResponseCode() + " "
+									+ response.get(k).getResponseMessage());
+							System.out.println(response.get(k).getHeaders().toString());
+						}
+						System.out.println(response.get(k).getResult());
 					}
-					output += response.getResult();
-					writeFile(outputFileName, output);
-				} else {
-					if (isVerbose) {
-						System.out.println(response.getHttpVersion() + " " + response.getResponseCode() + " "
-								+ response.getResponseMessage());
-						System.out.println(response.getHeaders().toString());
-					}
-					System.out.println(response.getResult());
 				}
+				
 
 			} catch (Exception e) {
 				System.out.println(

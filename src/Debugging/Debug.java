@@ -12,16 +12,18 @@
 
 package Debugging;
 
+import java.util.ArrayList;
+
 import MuHttpClientLibrary.*;
 public class Debug {
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		
+		/*
 		try {
 			MuHttpClient client = new MuHttpClient("http://httpbin.org/post",MuMethod.POST,"test=sdfdsf&LastName=Umer");
 			client.header.addHeader("Content-Type", "application/x-www-form-urlencoded");
-			MuHttpResponse resp = client.sendRequest(5);
+			ArrayList<MuHttpResponse> resp = client.sendRequest(0);
 			System.out.println(resp.getHttpVersion() + " " + resp.getResponseCode() + " "+resp.getResponseMessage());
 			System.out.println(resp.getHeaders().toString());
 			System.out.println(resp.getResult());
@@ -29,7 +31,7 @@ public class Debug {
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}
+		}*/
 	}
 
 }
