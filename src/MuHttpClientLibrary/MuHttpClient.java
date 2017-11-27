@@ -31,7 +31,17 @@ public class MuHttpClient {
 	PrintWriter writer;
 	MuMethod method;
 	String postData;
-
+	
+	///ARQ Params
+	long mySeqNum = 1l;
+	long serverSeqNum = 0l;
+	int[] sendWindow = new int[4];
+	int[] recvWindow = new int[4];
+	boolean isHandShake = false;
+	InetAddress gPeerAddr = null;
+	int gPeerPort = -1;
+	
+	
 	public MuHttpClient(String URI, int port, MuMethod method, MuMessageHeader header) throws Exception {
 		// Constructor
 		try {
@@ -80,14 +90,52 @@ public class MuHttpClient {
 		this.postData = data;
 	}
 
+	public boolean doHandShake() throws Exception {
+		InetAddress address = InetAddress.getByName("localhost");
+		this.sock = new DatagramSocket();
+		//First SYN Frame.
+		Packet p = new Packet.Builder()
+                .setType(1) //1=SYN,2=ACK,0=PayLoad
+                .setSequenceNumber(mySeqNum)
+                .setPortNumber(this.port)
+                .setPeerAddress(url.getHost())
+                .setPayload(new byte[0])
+                .create();
+        DatagramPacket packet = new DatagramPacket(p.toBytes(), p.toBytes().length, address, 3000);
+        sock.send(packet);
+        
+        //Response from Server
+        byte[] buf0 = new byte[1024];
+        packet = new DatagramPacket(buf0, buf0.length);
+        sock.receive(packet);
+        Packet pr = Packet.fromBytes(packet.getData());
+        if(pr.getType() == 1)
+        	this.serverSeqNum = pr.getSequenceNumber();
+        else
+        	return false;
+        
+        //Send Last ACK
+        Packet resp = pr.toBuilder()
+                .setPayload(new byte[0])
+                .setType(2)
+                .create();
+        
+        packet = new DatagramPacket(resp.toBytes(), resp.toBytes().length, address, 3000);
+        sock.send(packet);
+        this.gPeerAddr = resp.getPeerAddress();
+        this.gPeerPort = resp.getPeerPort();
+		return true;
+		//Everything done.
+	}
+	
 	public MuHttpResponse sendRequest(int reqNumber) throws Exception {
 
 		if (reqNumber < 1) {
 			return null;
 		} else {
-			InetAddress address = InetAddress.getByName(url.getHost());
+			String ksd  = url.getHost();
+			InetAddress address = InetAddress.getByName("localhost");
 			
-			sock = new DatagramSocket();
 			String data = "";
 			//writer = new PrintWriter(sock.getOutputStream());
 
@@ -109,12 +157,19 @@ public class MuHttpClient {
 			}
 			//writer.flush();
 			byte[] buf = data.getBytes();
-	        DatagramPacket packet = new DatagramPacket(buf, buf.length, address, this.port);
-	        sock.send(packet);
+			Packet p = new Packet.Builder()
+                    .setType(0)
+                    .setSequenceNumber(1L)
+                    .setPortNumber(this.gPeerPort)
+                    .setPeerAddress(this.gPeerAddr.getHostAddress())
+                    .setPayload(buf)
+                    .create();
+	        DatagramPacket packet = new DatagramPacket(p.toBytes(), p.toBytes().length, address, 3000);
+	        this.sock.send(packet);
 	        
-	        buf = new byte[2048];
+	        buf = new byte[1024];
 	        packet = new DatagramPacket(buf, buf.length);
-	        sock.receive(packet);
+	        this.sock.receive(packet);
 	        String received = new String(packet.getData(), 0, packet.getLength());
 	        String[] parts = received.split("\r\n");
 			//BufferedReader bufRead = new BufferedReader(new InputStreamReader(sock.getInputStream()));
@@ -161,7 +216,7 @@ public class MuHttpClient {
 
 			//bufRead.close();
 			//writer.close();
-			sock.close();
+			this.sock.close();
 
 			return response;
 		}

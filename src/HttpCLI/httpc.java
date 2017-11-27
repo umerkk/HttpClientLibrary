@@ -120,8 +120,16 @@ public class httpc {
 				} else {
 					client = new MuHttpClient(url, httpMethod, header);
 				}
-
-				MuHttpResponse response = client.sendRequest(6);
+				
+				MuHttpResponse response = null;
+				if(client.doHandShake()) {
+					response = client.sendRequest(6);
+				} else {
+					System.out.println("The handshake was unsuccessful. The request could not be sent.");
+					return;
+				}
+				
+			
 				if (isOutputToFile) {
 					String output = "";
 					if (isVerbose) {
