@@ -154,6 +154,7 @@ public class httpc {
 			} catch (Exception e) {
 				System.out.println(
 						"The following errors occured while executing your request:\r\n \r\n " + e.getMessage());
+				e.printStackTrace();
 			}
 		}
 

@@ -37,13 +37,14 @@ public class MuHttpClient {
 	int recvDataIndex = 0;
 
 	/// ARQ Params
-	long mySeqNum = 0l;
+	long mySeqNum = -1l;
 	long serverSeqNum = 0l;
 	MyPacketWithTimer[] sendWindow = new MyPacketWithTimer[4];
 	int[] recvWindow = new int[4];
 	boolean isHandShake = false;
 	InetAddress gPeerAddr = null;
 	int gPeerPort = -1;
+	boolean firstGet = false;
 
 	public MuHttpClient(String URI, int port, MuMethod method, MuMessageHeader header) throws Exception {
 		// Constructor
@@ -81,6 +82,8 @@ public class MuHttpClient {
 
 	public MuHttpClient(String URI, MuMethod method, MuMessageHeader header) throws Exception {
 		this(URI, defaultPort, method, header);
+		preProcessData();
+		this.firstGet = true;
 	}
 
 	public MuHttpClient(String URI, MuMethod method, String data) throws Exception {
@@ -92,6 +95,7 @@ public class MuHttpClient {
 		this(URI, defaultPort, method, header);
 		this.postData = data;
 		preProcessData();
+		
 	}
 
 	private void preProcessData() throws Exception {
@@ -108,7 +112,11 @@ public class MuHttpClient {
 			//data += postData;
 		}
 		int payloadSize = 1013 - data.getBytes().length;
-		this.dataChunks = splitBytes(postData.getBytes(), payloadSize);
+		if (this.method == MuMethod.POST) {
+			this.dataChunks = splitBytes(postData.getBytes(), payloadSize);
+		} else {
+			this.dataChunks = splitBytes(data.getBytes(), payloadSize);
+		}
 		this.recvDataIndex = dataChunks.length;
 		this.data = "";
 	}
@@ -206,14 +214,27 @@ public class MuHttpClient {
 	
 	private MuHttpResponse recieveRequest() throws Exception {
 		// *****************************************************
+		InetAddress address = InetAddress.getByName("localhost");
 		byte[] buf = new byte[1024];
 		DatagramPacket packet = new DatagramPacket(buf, buf.length);
 		
 		this.sock.receive(packet);
 		
 		Packet p = Packet.fromBytes(packet.getData());
-		if(removePacketFromWindow(p)) {
+		if(removePacketFromWindow(p) || this.method == MuMethod.GET) {
 			String received = new String(p.getPayload(), 0, p.getPayload().length);
+			
+			if(p.getType() == 3) {
+				
+				//SendACK for Multi-part file.
+				Packet pAck = new Packet.Builder().setType(4).setSequenceNumber(getNextSeqNumber())
+						.setPortNumber(this.gPeerPort).setPeerAddress(this.gPeerAddr.getHostAddress())
+						.setPayload(new byte[0]).create();
+				DatagramPacket packetAck = new DatagramPacket(pAck.toBytes(), pAck.toBytes().length, address, 3000);
+				this.sock.send(packetAck);
+				this.recvDataIndex = Integer.parseInt(received.trim());
+				return null;
+			}
 			this.recvDataIndex--;
 			
 			String[] parts = received.split("\r\n");
@@ -273,7 +294,7 @@ public class MuHttpClient {
 		ArrayList<MuHttpResponse> resp = new ArrayList<MuHttpResponse>();
 		
 		while (true) {
-			if(recvDataIndex <= 0) {
+			if((recvDataIndex <= 0 && this.method == MuMethod.POST) || (recvDataIndex <= 0 && this.method == MuMethod.GET && firstGet==false)) {
 				break;
 			}
 			if (currDataIndex >= dataChunks.length) {
@@ -303,10 +324,10 @@ public class MuHttpClient {
 
 						// Append all headers to the request.
 						data += header.toString();
-						if (this.method == MuMethod.POST) {
+						//if (this.method == MuMethod.POST) {
 							data += new String(dataChunks[currDataIndex]);
 							currDataIndex++;
-						}
+						//}
 						// writer.flush();
 						byte[] buf = data.getBytes();
 
@@ -316,6 +337,7 @@ public class MuHttpClient {
 						MyPacketWithTimer pkt = new MyPacketWithTimer(this.sock, p);
 						pkt.transmitPacket(); // SEND the PACKET
 						addPacketToWindow(pkt);
+						this.firstGet = false;
 
 						// DatagramPacket packet = new
 						// DatagramPacket(p.toBytes(), p.toBytes().length,

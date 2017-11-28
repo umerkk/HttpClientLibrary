@@ -20,32 +20,36 @@ public class MyPacketWithTimer {
 
 	public void transmitPacket() throws Exception {
 		InetAddress address = InetAddress.getByName("localhost");
-		byte[] ss = myPacket.toBytes();
 		
 		DatagramPacket packet = new DatagramPacket(myPacket.toBytes(), myPacket.toBytes().length, address, 3000);
 		this.sock.send(packet);
 
-		t.scheduleAtFixedRate(new TimerTask() {
-			public void run() {
-				try {
-					retransmitPacket();
-					//this.cancel();
-				} catch (Exception e) {
-					e.printStackTrace();
+		if(myPacket.getType() == 0) {
+			t.scheduleAtFixedRate(new TimerTask() {
+				public void run() {
+					try {
+						retransmitPacket();
+						//this.cancel();
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
 				}
 
-			}
-
-		}, 500, 500);
+			}, 5000, 5000);
+		}
 	}
 
 	private void retransmitPacket() throws Exception {
-		t.cancel();
+		if(myPacket.getType() == 0) {
+			t.cancel();
+		}
 		transmitPacket();
 	}
 	
 	public void makrDelivered() {
-		t.cancel();
+		if(myPacket.getType() == 0) {
+			t.cancel();
+		}
 	}
 
 }
